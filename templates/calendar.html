@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Calendar{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>{{ year }} {{ month_name }} </h2>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('calendar_view', year=prev_year, month=prev_month) }}" class="btn btn-secondary">&larr; Previous</a>
+        <a href="{{ url_for('calendar_view') }}" class="btn btn-secondary">Today</a>
+        <a href="{{ url_for('calendar_view', year=next_year, month=next_month) }}" class="btn btn-secondary">Next &rarr;</a>
+        <a href="{{ url_for('add_key_date') }}" class="btn btn-primary">+ Add Key Date</a>
+    </div>
+</div>
+
+<div class="calendar-container">
+    <div class="calendar-wrapper">
+        <div class="calendar-header">
+            <div class="calendar-day-name">Mon</div>
+            <div class="calendar-day-name">Tue</div>
+            <div class="calendar-day-name">Wed</div>
+            <div class="calendar-day-name">Thu</div>
+            <div class="calendar-day-name">Fri</div>
+            <div class="calendar-day-name">Sat</div>
+            <div class="calendar-day-name">Sun</div>
+        </div>
+        <div class="calendar-grid">        
+            {% for week in calendar %}
+                {% for day_info in week %}
+                    {% if day_info.day %}
+                    <a href="{{ url_for('calendar_day_view', date_str=day_info.date.isoformat()) }}" class="calendar-day {% if day_info.has_updates %}has-updates{% endif %}{% if day_info.key_date %}has-key-date{% endif %}">
+                        <div class="day-number">{{ day_info.day }}</div>
+                        {% if day_info.has_updates %}
+                            <div class="day-updates" title="View updates">📝</div>
+                        {% endif %}
+                        {% if day_info.key_date %}
+                            <div class="day-key-date" title="{{ day_info.key_date.name }}">
+                                📌
+                            </div>
+                        {% endif %}
+                    </a>
+                {% else %}
+                    <div class="calendar-day empty"></div>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="below-calendar">
+    <h3>📌 Key Dates</h3>
+    {% if key_dates %}
+        <div class="key-dates-list">
+            {% for key_date in key_dates %}
+                <div class="key-date-item {% if key_date.is_past() %}past{% elif key_date.is_today() %}today{% endif %}">
+                    <div class="key-date-info">
+                        <div class="key-date-title">
+                            {{ key_date.name }}
+                            {% if key_date.is_today() %}
+                                <span class="badge badge-today">TODAY</span>
+                            {% elif not key_date.is_past() %}
+                                <span class="badge badge-upcoming">{{ key_date.days_remaining() }} days</span>
+                            {% else %}
+                                <span class="badge badge-past">{{ -key_date.days_remaining() }} days ago</span>
+                            {% endif %}
+                        </div>
+                        <div class="key-date-date">{{ key_date.date.strftime('%Y.%m.%d') }}</div>
+                        {% if key_date.notes %}
+                            <div class="key-date-notes">{{ key_date.notes }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="key-date-actions">
+                        <a href="{{ url_for('edit_key_date', date_id=key_date.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                        <form method="POST" action="{{ url_for('delete_key_date', date_id=key_date.id) }}" class="inline-form" onsubmit="return confirm('Delete this key date?')">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No key dates added yet. <a href="{{ url_for('add_key_date') }}">Add your first key date</a></p>
+    {% endif %}
+</div>
+
+{% endblock %}

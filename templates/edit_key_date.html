@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Edit Key Date{% endblock %}
+
+{% block content %}
+<h2>Edit Key Date</h2>
+
+<form method="POST" class="form-container form-max">
+    <div class="form-group">
+        <label for="name">Date Name *</label>
+        <input type="text" id="name" name="name" value="{{ key_date.name }}" placeholder="e.g., Exam, Project Deadline, Conference" required>
+    </div>
+
+    <div class="form-group">
+        <label for="date">Date *</label>
+        <input type="date" id="date" name="date" value="{{ key_date.date.isoformat() }}" required>
+    </div>
+
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Add any additional notes...">{{ key_date.notes or '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Update Key Date</button>
+        <a href="{{ url_for('calendar_view') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

@@ -1,0 +1,26 @@
+
+services:
+  study-tracker:
+    container_name: ccie_tracker
+    image: tracker:latest
+    pull_policy: never
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - SECRET_KEY=change-me-in-production
+      - DEBUG=False
+      - ENABLE_PASSWORD_PROTECTION=True
+      - APP_PASSWORD=admin
+      - DATABASE_URL=sqlite:////app/data/study_tracker.db
+      - DEFAULT_THEME=dark
+    volumes:
+      - ./ccie_tracker_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+

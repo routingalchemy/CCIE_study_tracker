@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Import - {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Bulk Import from Excel</h2>
+    <p>Upload an Excel file (.xlsx or .xls) and map columns to study item fields. Multiple columns can be selected for Title and Notes - they will be concatenated.</p>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="file">Excel File</label>
+            <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
+        </div>
+
+        <div id="column-mapping">
+            <div class="form-group">
+                <label for="sheet_select">Select Sheet</label>
+                <select id="sheet_select" name="sheet_name">
+                    <option value="">-- Select Sheet --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="data_start_row">Data starts from row (1-based)</label>
+                <input type="number" id="data_start_row" name="data_start_row" value="2" min="1" max="100">
+                <small>Usually 2 if first row contains headers</small>
+            </div>
+
+            <h3>Column Mapping (use Excel column letters: A, B, C, etc.)</h3>
+
+            <div class="form-group">
+                <label>Title Columns (select multiple)</label>
+                <div id="title-columns" class="checkbox-group">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notes Columns (select multiple)</label>
+                <div id="notes-columns" class="checkbox-group">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="hours_column">Hours Spent Column</label>
+                <select id="hours_column" name="hours_column">
+                    <option value="">-- Select Column --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="progress_column">Progress Column</label>
+                <select id="progress_column" name="progress_column">
+                    <option value="">-- Select Column --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="theory_column">Theory Confidence Column</label>
+                <select id="theory_column" name="theory_column">
+                    <option value="">-- Select Column --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="practical_column">Practical Confidence Column</label>
+                <select id="practical_column" name="practical_column">
+                    <option value="">-- Select Column --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success hidden" id="import-btn">Import Items</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Read Excel file to get sheet names
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+
+            // Populate sheet selector
+            const sheetSelect = document.getElementById('sheet_select');
+            sheetSelect.innerHTML = '<option value="">-- Select Sheet --</option>';
+            workbook.SheetNames.forEach(sheetName => {
+                const option = document.createElement('option');
+                option.value = sheetName;
+                option.textContent = sheetName;
+                sheetSelect.appendChild(option);
+            });
+
+            // Auto-select first sheet
+            if (workbook.SheetNames.length > 0) {
+                sheetSelect.value = workbook.SheetNames[0];
+                loadSheetColumns(workbook, workbook.SheetNames[0]);
+            }
+
+            document.getElementById('column-mapping').style.display = 'block';
+            document.getElementById('import-btn').style.display = 'inline-block';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+});
+
+// Handle sheet selection change
+document.getElementById('sheet_select').addEventListener('change', function(e) {
+    const fileInput = document.getElementById('file');
+    const file = fileInput.files[0];
+    if (file && e.target.value) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            loadSheetColumns(workbook, document.getElementById('sheet_select').value);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+});
+
+function loadSheetColumns(workbook, sheetName) {
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Get column range
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    const columns = [];
+
+    // Generate column letters (A, B, C, ..., Z, AA, AB, etc.)
+    for (let col = range.s.c; col <= range.e.c; col++) {
+        columns.push(XLSX.utils.encode_col(col));
+    }
+
+    populateColumnSelectors(columns);
+}
+
+function populateColumnSelectors(columns) {
+    // Title columns (checkboxes)
+    const titleContainer = document.getElementById('title-columns');
+    titleContainer.innerHTML = '';
+    columns.forEach(col => {
+        const checkbox = document.createElement('label');
+        checkbox.className = 'checkbox-label';
+        checkbox.innerHTML = `
+            <input type="checkbox" name="title_columns" value="${col}">
+            ${col}
+        `;
+        titleContainer.appendChild(checkbox);
+    });
+
+    // Notes columns (checkboxes)
+    const notesContainer = document.getElementById('notes-columns');
+    notesContainer.innerHTML = '';
+    columns.forEach(col => {
+        const checkbox = document.createElement('label');
+        checkbox.className = 'checkbox-label';
+        checkbox.innerHTML = `
+            <input type="checkbox" name="notes_columns" value="${col}">
+            ${col}
+        `;
+        notesContainer.appendChild(checkbox);
+    });
+
+    // Single select dropdowns
+    const selects = ['hours_column', 'progress_column', 'theory_column', 'practical_column'];
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">-- Select Column --</option>';
+        columns.forEach(col => {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = col;
+            select.appendChild(option);
+        });
+    });
+}
+</script>
+
+<!-- Include XLSX library for client-side Excel reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+{% endblock %}

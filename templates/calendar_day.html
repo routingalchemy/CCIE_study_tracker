@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Day View: {{ date.strftime('%Y.%m.%d') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>{{ date.strftime('%Y %B %d, %A') }}</h2>
+    </div>
+    <a href="{{ url_for('calendar_view') }}" class="btn btn-secondary">← Back to Calendar</a>
+</div>
+
+{% if key_date or updates %}
+    <div class="events-list">
+        {% if key_date %}
+            <div class="event-item event-key-date">
+                <div class="event-header">
+                    <div class="event-badge">
+                        <span class="badge badge-keydate" title="Key Date">📌 Key Date</span>
+                    </div>
+                </div>
+                <div class="event-body">
+                    <h4>{{ key_date.name }}</h4>
+                    {% if key_date.notes %}
+                        <p class="event-notes">{{ key_date.notes }}</p>
+                    {% endif %}
+                    <div class="event-actions">
+                        <a href="{{ url_for('edit_key_date', date_id=key_date.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% if updates %}
+            {% for update in updates %}
+                <div class="event-item {% if update.operation_type == 'add' %}operation-add{% elif update.operation_type == 'modify' %}operation-modify{% else %}operation-delete{% endif %}">
+                    <div class="event-header">
+                        <div class="event-badge">
+                            {% if update.operation_type == 'add' %}
+                                <span class="badge badge-add" title="Added">✚ Add</span>
+                            {% elif update.operation_type == 'modify' %}
+                                <span class="badge badge-modify" title="Modified">✎ Modify</span>
+                            {% else %}
+                                <span class="badge badge-delete" title="Deleted">✕ Delete</span>
+                            {% endif %}
+                        </div>
+                        <div class="event-time">{{ update.last_modified.strftime('%H:%M:%S') }}</div>
+                    </div>
+                    <div class="event-body">
+                        <h4>{{ update.title }}</h4>
+                        {% if update.notes %}
+                            <p class="event-notes">{{ update.notes }}</p>
+                        {% endif %}
+                        <div class="event-stats">
+                            <span>Progress: <strong>{{ update.progress }}%</strong></span>
+                            <span>Hours: <strong>{{ update.hours_spent }}</strong></span>
+                            <span>Theory: <strong>{{ update.theory_confidence }}/5</strong></span>
+                            <span>Practical: <strong>{{ update.practical_confidence }}/5</strong></span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+{% else %}
+    <div class="no-events">
+        <p class="no-events-text">No events or updates for this day</p>
+    </div>
+{% endif %}
+
+{% endblock %}
+<style>
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-item {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-left: 5px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1.5rem;
+    transition: all 0.3s;
+}
+
+.event-item:hover {
+    box-shadow: var(--shadow);
+}
+
+.event-item.event-key-date {
+    border-left-color: #FF9800;
+}
+
+.event-item.operation-add {
+    border-left-color: #4CAF50;
+}
+
+.event-item.operation-modify {
+    border-left-color: #2196F3;
+}
+
+.event-item.operation-delete {
+    border-left-color: #F44336;
+    opacity: 0.8;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.event-badge {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.badge-add {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.badge-modify {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+}
+
+.badge-delete {
+    background: rgba(244, 67, 54, 0.2);
+    color: #F44336;
+}
+
+.badge-keydate {
+    background: rgba(255, 152, 0, 0.2);
+    color: #FF9800;
+}
+
+.event-time {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.event-body h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.event-notes {
+    margin: 0.5rem 0;
+    padding: 0.75rem;
+    background: var(--header-bg);
+    border-radius: 4px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.event-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.event-stats span {
+    color: var(--text-secondary);
+}
+
+.event-stats strong {
+    color: var(--primary-color);
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .event-item {
+        padding: 1rem;
+    }
+
+    .event-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+

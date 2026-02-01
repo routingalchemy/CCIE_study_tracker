@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Dashboard{% endblock %}
+
+{% block content %}
+<div class="summary summary-compact">
+    <div class="summary-card">
+        <h3>Total Items: {{ total_items }}</h3>
+    </div>
+    <div class="summary-card">
+        <h3>Total Hours: {{ total_hours }}</h3>
+    </div>
+    <div class="summary-card">
+        <h3>Avg Progress: {{ avg_progress }}%</h3>
+    </div>
+</div>
+
+{% if upcoming_key_dates %}
+<div class="key-dates-section">
+    <h3>📅 Upcoming Key Dates</h3>
+    <div class="key-dates-container">
+        {% for key_date in upcoming_key_dates %}
+        <a href="{{ url_for('edit_key_date', date_id=key_date.id) }}" class="key-date-card {% if key_date.is_today() %}today{% elif key_date.is_past() %}past{% endif %}">
+            <div class="key-date-name" title="{{ key_date.name }}">{{ key_date.name[:30] }}{% if key_date.name|length > 30 %}...{% endif %}</div>
+            <div class="key-date-info">
+                <span class="key-date-date">{{ key_date.date.strftime('%Y.%m.%d') }}</span>
+                <span class="key-date-remaining">
+                    {% if not key_date.is_past() %}
+                        {% if key_date.is_today() %}
+                            TODAY!
+                        {% else %}
+                            {{ key_date.days_remaining() }}d
+                        {% endif %}
+                    {% else %}
+                        {{ -key_date.days_remaining() }}d ago
+                    {% endif %}
+                </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="search-container">
+    <form method="GET" action="{{ url_for('index') }}" class="search-form">
+        <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Search by title..." class="search-input">
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        <input type="hidden" name="order" value="{{ sort_order }}">
+        <button type="submit" class="btn btn-secondary">Search</button>
+        {% if request.args.get('search') %}
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th class="sortable {% if sort_by == 'title' %}sorted-{{ sort_order }}{% endif %}" data-sort="title">Title</th>
+                <th class="sortable {% if sort_by == 'hours_spent' %}sorted-{{ sort_order }}{% endif %}" data-sort="hours_spent">Hours</th>
+                <th class="sortable {% if sort_by == 'progress' %}sorted-{{ sort_order }}{% endif %}" data-sort="progress">Progress</th>
+                <th class="sortable {% if sort_by == 'theory_confidence' %}sorted-{{ sort_order }}{% endif %}" data-sort="theory_confidence">Theory</th>
+                <th class="sortable {% if sort_by == 'practical_confidence' %}sorted-{{ sort_order }}{% endif %}" data-sort="practical_confidence">Practical</th>
+                <th class="sortable {% if sort_by == 'last_modified' %}sorted-{{ sort_order }}{% endif %}" data-sort="last_modified">Last Modified</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.title }}</td>
+                <td>{{ "%.1f"|format(item.hours_spent) }}</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ item.progress }}%"></div>
+                    </div>
+                    {{ item.progress }}%
+                </td>
+                <td>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill theory" style="width: {{ (item.theory_confidence / 5) * 100 }}%"></div>
+                    </div>
+                    {{ item.theory_confidence }}/5
+                </td>
+                <td>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill practical" style="width: {{ (item.practical_confidence / 5) * 100 }}%"></div>
+                    </div>
+                    {{ item.practical_confidence }}/5
+                </td>
+                <td>{{ item.last_modified.strftime('%Y.%m.%d %H:%M') if item.last_modified else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                    <form method="POST" action="{{ url_for('delete_item', item_id=item.id) }}" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this item?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if items|length == 0 %}
+<div class="center-block">
+    <p>No study items yet. <a href="{{ url_for('add_item') }}">Add your first item</a> to get started!</p>
+</div>
+{% endif %}
+{% endblock %}

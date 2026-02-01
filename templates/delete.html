@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Delete Items{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <form method="GET" action="{{ url_for('delete_items') }}" class="search-form">
+        <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Search by title..." class="search-input">
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        <input type="hidden" name="order" value="{{ sort_order }}">
+        <button type="submit" class="btn btn-secondary">Search</button>
+        {% if request.args.get('search') %}
+        <a href="{{ url_for('delete_items') }}" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="table-container">
+    <form method="POST" action="{{ url_for('bulk_delete') }}" id="bulk-delete-form">
+        <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        <input type="hidden" name="order" value="{{ sort_order }}">
+        <div class="block-actions">
+            <button type="submit" name="action" value="selected" class="btn btn-danger" id="delete-selected" disabled>Delete Selected</button>
+            <button type="submit" name="action" value="all" class="btn btn-danger" onclick="return confirmDeleteAll()">Delete {% if request.args.get('search') %}Filtered{% else %}All{% endif %}</button>
+        </div>
+        <table>
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="select-all"></th>
+                <th class="sortable {% if sort_by == 'title' %}sorted-{{ sort_order }}{% endif %}" data-sort="title">Title</th>
+                <th class="sortable {% if sort_by == 'hours_spent' %}sorted-{{ sort_order }}{% endif %}" data-sort="hours_spent">Hours</th>
+                <th class="sortable {% if sort_by == 'progress' %}sorted-{{ sort_order }}{% endif %}" data-sort="progress">Progress</th>
+                <th class="sortable {% if sort_by == 'theory_confidence' %}sorted-{{ sort_order }}{% endif %}" data-sort="theory_confidence">Theory</th>
+                <th class="sortable {% if sort_by == 'practical_confidence' %}sorted-{{ sort_order }}{% endif %}" data-sort="practical_confidence">Practical</th>
+                <th class="sortable {% if sort_by == 'last_modified' %}sorted-{{ sort_order }}{% endif %}" data-sort="last_modified">Last Modified</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td><input type="checkbox" name="item_ids" value="{{ item.id }}" class="item-checkbox"></td>
+                <td>{{ item.title }}</td>
+                <td>{{ "%.1f"|format(item.hours_spent) }}</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ item.progress }}%"></div>
+                    </div>
+                    {{ item.progress }}%
+                </td>
+                <td>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill theory" style="width: {{ (item.theory_confidence / 5) * 100 }}%"></div>
+                    </div>
+                    {{ item.theory_confidence }}/5
+                </td>
+                <td>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill practical" style="width: {{ (item.practical_confidence / 5) * 100 }}%"></div>
+                    </div>
+                    {{ item.practical_confidence }}/5
+                </td>
+                <td>{{ item.last_modified.strftime('%Y.%m.%d %H:%M') if item.last_modified else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </form>
+</div>
+
+{% if items|length == 0 %}
+<div class="center-block">
+    <p>{% if request.args.get('search') %}No items match your search.{% else %}No study items available for deletion.{% endif %}</p>
+</div>
+{% endif %}
+
+<div class="center-top">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+{% endblock %}

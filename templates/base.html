@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='calendar_styles.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <h1><a href="{{ url_for('index') }}" class="brand-link">{{ config.APP_NAME }}</a></h1>
+                <div class="current-datetime" id="current-datetime">
+                    <span id="current-date"></span> - <span id="current-time"></span>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="theme-toggle" class="theme-toggle" title="Toggle theme">{% if session.get('theme', config.DEFAULT_THEME) == 'light' %}🌙{% else %}☀️{% endif %}</button>
+                <a href="{{ url_for('add_item') }}" class="btn btn-primary">Add Item</a>
+                <a href="{{ url_for('bulk_import') }}" class="btn btn-secondary">Import</a>
+                <a href="{{ url_for('delete_items') }}" class="btn btn-danger">Delete</a>
+                <a href="{{ url_for('calendar_view') }}" class="btn btn-calendar">Calendar</a>
+                {% if config.ENABLE_PASSWORD_PROTECTION %}
+                <a href="{{ url_for('logout') }}" class="btn btn-logout">Lock</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

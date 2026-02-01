@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Study Item{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>{{ action }} Study Item</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label for="title">Title *</label>
+            <input type="text" id="title" name="title" value="{{ item.title if item else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="4">{{ item.notes if item else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="hours_spent">Hours Spent</label>
+            <input type="number" id="hours_spent" name="hours_spent" value="{{ item.hours_spent if item else 0 }}" step="0.5" min="0">
+        </div>
+
+        <div class="form-group">
+            <label for="progress">Progress (%)</label>
+            <input type="number" id="progress" name="progress" value="{{ item.progress if item else 0 }}" min="0" max="100">
+        </div>
+
+        <div class="form-group">
+            <label for="theory_confidence">Theory Confidence (0-5)</label>
+            <input type="number" id="theory_confidence" name="theory_confidence" value="{{ item.theory_confidence if item else 0 }}" min="0" max="5">
+        </div>
+
+        <div class="form-group">
+            <label for="practical_confidence">Practical Confidence (0-5)</label>
+            <input type="number" id="practical_confidence" name="practical_confidence" value="{{ item.practical_confidence if item else 0 }}" min="0" max="5">
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">{{ action }} Item</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
