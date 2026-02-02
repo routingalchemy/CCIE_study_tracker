@@ -13,9 +13,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Set initial theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    // Set initial theme: prefer server-rendered value, fallback to localStorage
+    const serverTheme = document.documentElement.getAttribute('data-theme');
+    const savedTheme = serverTheme || localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
+    // Ensure localStorage matches the active theme
+    try { localStorage.setItem('theme', savedTheme); } catch (e) {}
 
     // Sorting functionality
     const sortableHeaders = document.querySelectorAll('th.sortable');

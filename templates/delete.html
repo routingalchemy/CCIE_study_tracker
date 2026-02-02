@@ -40,7 +40,7 @@
             {% for item in items %}
             <tr>
                 <td><input type="checkbox" name="item_ids" value="{{ item.id }}" class="item-checkbox"></td>
-                <td>{{ item.title }}</td>
+                <td>{{ item.title[:50] }}{% if item.title|length > 50 %}...{% endif %}</td>
                 <td>{{ "%.1f"|format(item.hours_spent) }}</td>
                 <td>
                     <div class="progress-bar">

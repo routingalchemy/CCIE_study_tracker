@@ -30,7 +30,7 @@
             {% for week in calendar %}
                 {% for day_info in week %}
                     {% if day_info.day %}
-                    <a href="{{ url_for('calendar_day_view', date_str=day_info.date.isoformat()) }}" class="calendar-day {% if day_info.has_updates %}has-updates{% endif %}{% if day_info.key_date %}has-key-date{% endif %}">
+                    <a href="{{ url_for('calendar_day_view', date_str=day_info.date.isoformat()) }}" class="calendar-day {% if day_info.is_today %} is-today {% endif %}{% if day_info.has_updates %} has-updates {% endif %}{% if day_info.key_date %} has-key-date {% endif %}">
                         <div class="day-number">{{ day_info.day }}</div>
                         {% if day_info.has_updates %}
                             <div class="day-updates" title="View updates">📝</div>

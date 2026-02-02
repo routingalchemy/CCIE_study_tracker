@@ -195,6 +195,13 @@
     border: 2px solid var(--info-color);
 }
 
+.calendar-day.is-today {
+    border: 2px solid var(--primary-color);
+    background: var(--primary-light);
+    font-weight: 600;
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+}
+
 .day-number {
     font-weight: bold;
     font-size: 0.95rem;
@@ -202,7 +209,7 @@
 }
 
 .day-updates {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     color: var(--success-color);
     font-weight: 700;
     margin-bottom: 0.15rem;
@@ -214,7 +221,7 @@
 }
 
 .day-key-date {
-    font-size: 0.65rem;
+    font-size: 1.5rem;
     color: var(--info-color);
     font-weight: 600;
     overflow: hidden;
@@ -470,6 +477,28 @@
 #column-mapping { display: none; }
 .hidden { display: none; }
 .key-date-card { text-decoration: none; color: inherit; }
+
+.title-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.title-link:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+}
+
+/* Ensure title text truncates visually on the main table to ~50 chars */
+.title-link {
+    display: inline-block;
+    max-width: 50ch;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
 
 .block-actions { margin-bottom: 1rem; }
 

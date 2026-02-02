@@ -81,9 +81,25 @@ def login_required(f):
 @app.route('/')
 @login_required
 def index():
-    sort_by = request.args.get('sort', 'last_modified')
-    sort_order = request.args.get('order', 'desc')
-    search_query = request.args.get('search', '').strip()
+    # Determine sorting/search parameters: prefer query args, else session, else defaults
+    arg_sort = request.args.get('sort')
+    arg_order = request.args.get('order')
+    arg_search = request.args.get('search')
+
+    if arg_sort:
+        sort_by = arg_sort
+        sort_order = arg_order or 'desc'
+        session['sort'] = sort_by
+        session['order'] = sort_order
+    else:
+        sort_by = session.get('sort', 'last_modified')
+        sort_order = session.get('order', 'desc')
+
+    if arg_search is not None:
+        search_query = arg_search.strip()
+        session['search'] = search_query
+    else:
+        search_query = session.get('search', '').strip()
 
     valid_sorts = ['title', 'hours_spent', 'progress', 'theory_confidence', 'practical_confidence', 'last_modified']
     if sort_by not in valid_sorts:
@@ -188,7 +204,7 @@ def add_item():
         db.session.commit()
 
         flash('Item added successfully', 'success')
-        return redirect(url_for('index'))
+        return redirect(url_for('index', sort=session.get('sort', 'last_modified'), order=session.get('order', 'desc'), search=session.get('search', '')))
 
     return render_template('add_edit.html', item=None, action='Add')
 
@@ -196,6 +212,11 @@ def add_item():
 @login_required
 def edit_item(item_id):
     item = StudyItem.query.get_or_404(item_id)
+    sort_by = request.args.get('sort') or session.get('sort', 'last_modified')
+    sort_order = request.args.get('order') or session.get('order', 'desc')
+    search_query = request.args.get('search')
+    if search_query is None:
+        search_query = session.get('search', '')
 
     if request.method == 'POST':
         item.title = request.form.get('title')
@@ -208,7 +229,7 @@ def edit_item(item_id):
 
         if not item.title:
             flash('Title is required', 'error')
-            return redirect(url_for('edit_item', item_id=item_id))
+            return redirect(url_for('edit_item', item_id=item_id, sort=sort_by, order=sort_order, search=search_query))
 
         item.theory_confidence = min(max(item.theory_confidence, 0), 5)
         item.practical_confidence = min(max(item.practical_confidence, 0), 5)
@@ -217,7 +238,7 @@ def edit_item(item_id):
         db.session.commit()
 
         flash('Item updated successfully', 'success')
-        return redirect(url_for('index'))
+        return redirect(url_for('index', sort=sort_by, order=sort_order, search=search_query))
 
     return render_template('add_edit.html', item=item, action='Edit')
 
@@ -225,19 +246,27 @@ def edit_item(item_id):
 @login_required
 def delete_item(item_id):
     item = StudyItem.query.get_or_404(item_id)
+    sort_by = request.args.get('sort') or session.get('sort', 'last_modified')
+    sort_order = request.args.get('order') or session.get('order', 'desc')
+    search_query = request.args.get('search')
+    if search_query is None:
+        search_query = session.get('search', '')
+    
     db.session.delete(item)
     db.session.commit()
 
     flash('Item deleted successfully', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('index', sort=sort_by, order=sort_order, search=search_query))
 
 @app.route('/bulk_delete', methods=['POST'])
 @login_required
 def bulk_delete():
     action = request.form.get('action')
-    search_query = request.form.get('search', '')
-    sort_by = request.form.get('sort', 'last_modified')
-    sort_order = request.form.get('order', 'desc')
+    search_query = request.form.get('search')
+    if search_query is None:
+        search_query = session.get('search', '')
+    sort_by = request.form.get('sort') or session.get('sort', 'last_modified')
+    sort_order = request.form.get('order') or session.get('order', 'desc')
 
     if action == 'all':
         query = StudyItem.query
@@ -260,9 +289,12 @@ def bulk_delete():
 @app.route('/delete')
 @login_required
 def delete_items():
-    sort_by = request.args.get('sort', 'last_modified')
-    sort_order = request.args.get('order', 'desc')
-    search_query = request.args.get('search', '').strip()
+    sort_by = request.args.get('sort') or session.get('sort', 'last_modified')
+    sort_order = request.args.get('order') or session.get('order', 'desc')
+    search_query = request.args.get('search')
+    if search_query is None:
+        search_query = session.get('search', '')
+    search_query = search_query.strip()
     valid_sorts = ['title', 'hours_spent', 'progress', 'theory_confidence', 'practical_confidence', 'last_modified']
     if sort_by not in valid_sorts:
         sort_by = 'last_modified'
@@ -427,7 +459,7 @@ def bulk_import():
             os.remove(filepath)
 
             flash(f'Successfully imported {imported_count} items', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('index', sort=session.get('sort', 'last_modified'), order=session.get('order', 'desc'), search=session.get('search', '')))
 
         except Exception as e:
             flash(f'Error importing file: {str(e)}', 'error')
@@ -473,6 +505,7 @@ def calendar_view():
     else:
         next_month, next_year = month + 1, year
 
+    today = datetime.utcnow().date()
     calendar_data = []
     for week in cal:
         week_data = []
@@ -483,11 +516,13 @@ def calendar_view():
                 day_date = datetime(year, month, day).date()
                 has_updates = day_date in update_dates
                 key_date = key_dates_map.get(day_date)
+                is_today = day_date == today
                 week_data.append({
                     'day': day,
                     'date': day_date,
                     'has_updates': has_updates,
-                    'key_date': key_date
+                    'key_date': key_date,
+                    'is_today': is_today
                 })
         calendar_data.append(week_data)
 
