@@ -36,10 +36,19 @@
             <input type="number" id="practical_confidence" name="practical_confidence" value="{{ item.practical_confidence if item else 0 }}" min="0" max="5">
         </div>
 
+        {% if item %}
+        <div class="form-group">
+            <label for="update_date">Update Date (Optional - for retrospective data)</label>
+            <input type="date" id="update_date" name="update_date" max="{{ today }}">
+            <small>Leave blank to use today. Only use for past dates if no newer update exists.</small>
+        </div>
+        {% endif %}
+
         <div class="form-actions">
             <a href="{{ url_for('index', sort=request.args.get('sort', 'last_modified'), order=request.args.get('order', 'desc'), search=request.args.get('search', '')) }}" class="btn btn-secondary">Cancel</a>
             <button type="submit" class="btn btn-success">{{ action }} Item</button>
             {% if item %}
+            <a href="{{ url_for('item_history', item_id=item.id) }}" class="btn btn-info">📈 History</a>
             <button type="button" class="btn btn-danger" onclick="if(confirm('Are you sure you want to delete this item?')) { document.getElementById('delete-form').submit(); }">Delete</button>
             {% endif %}
         </div>

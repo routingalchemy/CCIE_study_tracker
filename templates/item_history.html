@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.APP_NAME }} - Progress History: {{ item.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>{{ item.title }} - Progress History</h2>
+        <p class="subtitle">Track changes over time</p>
+    </div>
+    <div class="page-actions">
+    <a href="{{ url_for('edit_item', item_id=item.id) }}" class="btn btn-secondary">← Back to Item</a>
+    <a href="{{ url_for('calendar_view') }}" class="btn btn-secondary">← Back to Calendar</a>
+    </div>
+</div>
+
+<div class="history-container">
+    <div class="chart-wrapper">
+        <canvas id="historyChart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    const chartData = {
+        dates: {{ chart_data.dates | tojson }},
+        progress: {{ chart_data.progress | tojson }},
+        hours_spent: {{ chart_data.hours_spent | tojson }},
+        theory_confidence: {{ chart_data.theory_confidence | tojson }},
+        practical_confidence: {{ chart_data.practical_confidence | tojson }}
+    };
+
+    let chart = null;
+
+    function initChart() {
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        
+        const datasets = [
+            {
+                label: 'Progress (%)',
+                data: chartData.progress,
+                borderColor: '#FF6384',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#FF6384',
+                yAxisID: 'y',
+                hidden: false
+            },
+            {
+                label: 'Hours Spent',
+                data: chartData.hours_spent,
+                borderColor: '#36A2EB',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#36A2EB',
+                yAxisID: 'y1',
+                hidden: false
+            },
+            {
+                label: 'Theory Confidence',
+                data: chartData.theory_confidence,
+                borderColor: '#FFCE56',
+                backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#FFCE56',
+                yAxisID: 'y2',
+                hidden: false
+            },
+            {
+                label: 'Practical Confidence',
+                data: chartData.practical_confidence,
+                borderColor: '#4BC0C0',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#4BC0C0',
+                yAxisID: 'y2',
+                hidden: false
+            }
+        ];
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 13 },
+                        borderColor: '#ddd',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Date',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.1)'
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Progress (%)',
+                            color: '#FF6384',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        min: 0,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.1)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Hours Spent',
+                            color: '#36A2EB',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Confidence (0-5)',
+                            color: '#4BC0C0',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        min: 0,
+                        max: 5,
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        offset: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize chart on load
+    document.addEventListener('DOMContentLoaded', function() {
+        initChart();
+
+        // Add toggle functionality
+        const toggles = document.querySelectorAll('.chart-toggle');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const datasetMap = {
+                    'toggle-progress': 0,
+                    'toggle-hours': 1,
+                    'toggle-theory': 2,
+                    'toggle-practical': 3
+                };
+                
+                const datasetIndex = datasetMap[this.id];
+                if (datasetIndex !== undefined) {
+                    chart.data.datasets[datasetIndex].hidden = !this.checked;
+                    chart.update();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+<style>
+.history-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+}
+
+.chart-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.chart-controls h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.toggle-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.toggle-button {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: white;
+    user-select: none;
+    transition: opacity 0.3s;
+}
+
+.toggle-label input[type="checkbox"]:checked + .toggle-button {
+    opacity: 1;
+}
+
+.toggle-label input[type="checkbox"]:not(:checked) + .toggle-button {
+    opacity: 0.4;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 500px;
+    width: 100%;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin: 0.5rem 0 0 0;
+}
+
+@media (max-width: 768px) {
+    .history-container {
+        padding: 1rem;
+    }
+
+    .toggle-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .chart-wrapper {
+        height: 400px;
+    }
+}
+</style>

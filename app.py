@@ -27,6 +27,9 @@ class StudyItem(db.Model):
     last_modified = db.Column(db.DateTime, default=datetime.utcnow)
     operation_type = db.Column(db.String(20), default='add')  # 'add', 'modify', 'delete'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to update history with cascade delete
+    update_history = db.relationship('UpdateHistory', backref='study_item', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<StudyItem {self.title}>'
@@ -43,6 +46,19 @@ class StudyItem(db.Model):
             'last_modified': self.last_modified.isoformat() if self.last_modified else None,
             'operation_type': self.operation_type
         }
+
+class UpdateHistory(db.Model):
+    """Track changes to study items with delta information."""
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('study_item.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)  # Date of update (one per day per item)
+    delta = db.Column(db.JSON)  # Changes: {field: {old: value, new: value}, ...}
+    previous_values = db.Column(db.JSON)  # Previous state before this update
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<UpdateHistory item={self.item_id} date={self.date}>'
 
 class KeyDate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -219,6 +235,14 @@ def edit_item(item_id):
         search_query = session.get('search', '')
 
     if request.method == 'POST':
+        # Store previous values before updating
+        previous_values = {
+            'hours_spent': item.hours_spent,
+            'progress': item.progress,
+            'theory_confidence': item.theory_confidence,
+            'practical_confidence': item.practical_confidence
+        }
+
         item.title = request.form.get('title')
         item.notes = request.form.get('notes')
         item.hours_spent = float(request.form.get('hours_spent', 0))
@@ -235,12 +259,78 @@ def edit_item(item_id):
         item.practical_confidence = min(max(item.practical_confidence, 0), 5)
         item.operation_type = 'modify'
 
+        # Calculate delta for tracked fields
+        delta = {}
+        if previous_values['hours_spent'] != item.hours_spent:
+            delta['hours_spent'] = {'old': previous_values['hours_spent'], 'new': item.hours_spent}
+        if previous_values['progress'] != item.progress:
+            delta['progress'] = {'old': previous_values['progress'], 'new': item.progress}
+        if previous_values['theory_confidence'] != item.theory_confidence:
+            delta['theory_confidence'] = {'old': previous_values['theory_confidence'], 'new': item.theory_confidence}
+        if previous_values['practical_confidence'] != item.practical_confidence:
+            delta['practical_confidence'] = {'old': previous_values['practical_confidence'], 'new': item.practical_confidence}
+
         db.session.commit()
+
+        # Record update history if there are changes
+        if delta:
+            today = datetime.utcnow().date()
+            
+            # Check for optional update_date for retrospective data
+            update_date_str = request.form.get('update_date')
+            if update_date_str:
+                try:
+                    update_date = datetime.strptime(update_date_str, '%Y-%m-%d').date()
+                    # Validate: cannot be in the future
+                    if update_date > today:
+                        flash('Update date cannot be in the future', 'error')
+                        return redirect(url_for('edit_item', item_id=item_id, sort=sort_by, order=sort_order, search=search_query))
+                    # Validate: must not have a newer update for this item
+                    newer_update = UpdateHistory.query.filter(
+                        UpdateHistory.item_id == item.id,
+                        UpdateHistory.date > update_date
+                    ).first()
+                    if newer_update:
+                        flash(f'Cannot add update for {update_date}. A newer update exists on {newer_update.date}.', 'error')
+                        return redirect(url_for('edit_item', item_id=item_id, sort=sort_by, order=sort_order, search=search_query))
+                except ValueError:
+                    flash('Invalid date format', 'error')
+                    return redirect(url_for('edit_item', item_id=item_id, sort=sort_by, order=sort_order, search=search_query))
+            else:
+                update_date = today
+            
+            # Check for existing update record for this date for this specific item
+            update_record = UpdateHistory.query.filter_by(item_id=item.id, date=update_date).first()
+            if update_record:
+                # Update existing record: preserve original previous_values, recalculate delta from original
+                original_previous = update_record.previous_values
+                new_delta = {}
+                if original_previous['hours_spent'] != item.hours_spent:
+                    new_delta['hours_spent'] = {'old': original_previous['hours_spent'], 'new': item.hours_spent}
+                if original_previous['progress'] != item.progress:
+                    new_delta['progress'] = {'old': original_previous['progress'], 'new': item.progress}
+                if original_previous['theory_confidence'] != item.theory_confidence:
+                    new_delta['theory_confidence'] = {'old': original_previous['theory_confidence'], 'new': item.theory_confidence}
+                if original_previous['practical_confidence'] != item.practical_confidence:
+                    new_delta['practical_confidence'] = {'old': original_previous['practical_confidence'], 'new': item.practical_confidence}
+                update_record.delta = new_delta
+                update_record.updated_at = datetime.utcnow()
+            else:
+                # Create new record for this item on this date
+                update_record = UpdateHistory(
+                    item_id=item.id,
+                    date=update_date,
+                    delta=delta,
+                    previous_values=previous_values
+                )
+                db.session.add(update_record)
+            db.session.commit()
 
         flash('Item updated successfully', 'success')
         return redirect(url_for('index', sort=sort_by, order=sort_order, search=search_query))
 
-    return render_template('add_edit.html', item=item, action='Edit')
+    today = datetime.utcnow().date()
+    return render_template('add_edit.html', item=item, action='Edit', today=today)
 
 @app.route('/delete/<int:item_id>', methods=['POST'])
 @login_required
@@ -491,6 +581,14 @@ def calendar_view():
             if date_key not in update_dates:
                 update_dates[date_key] = True
 
+    # Also include dates from update history (includes retrospective updates)
+    retrospective_updates = UpdateHistory.query.filter(
+        UpdateHistory.date.between(start_date, end_date)
+    ).all()
+    for retro_update in retrospective_updates:
+        if retro_update.date not in update_dates:
+            update_dates[retro_update.date] = True
+
     key_dates_map = {}
     for key_date in key_dates:
         key_dates_map[key_date.date] = key_date
@@ -547,15 +645,90 @@ def calendar_day_view(date_str):
         return redirect(url_for('calendar_view'))
     start_datetime = datetime.combine(day_date, datetime.min.time())
     end_datetime = datetime.combine(day_date, datetime.max.time())
+    
+    # Fetch updates modified on this day
     updates = db.session.query(StudyItem).filter(
         StudyItem.last_modified.between(start_datetime, end_datetime)
     ).order_by(StudyItem.last_modified.desc()).all()
+    
+    # Fetch update history records for this day to show deltas
+    update_history = UpdateHistory.query.filter_by(date=day_date).all()
+    history_by_item = {uh.item_id: uh for uh in update_history}
+    
+    # Collect item IDs from history
+    items_from_history = set(uh.item_id for uh in update_history)
+    
+    # Get StudyItem objects for items in history that aren't already in updates
+    items_in_updates = set(u.id for u in updates)
+    missing_item_ids = items_from_history - items_in_updates
+    
+    if missing_item_ids:
+        missing_items = StudyItem.query.filter(StudyItem.id.in_(missing_item_ids)).all()
+        updates = list(updates) + missing_items
+        updates = sorted(updates, key=lambda x: x.last_modified, reverse=True)
+    
+    # Determine which updates are retrospective (added to a past date)
+    retrospective_items = set()
+    for uh in update_history:
+        # If created_at is on a later date than the update date, it's retrospective
+        created_date = uh.created_at.date()
+        if created_date > uh.date:
+            retrospective_items.add(uh.item_id)
+    
     key_date = KeyDate.query.filter_by(date=day_date).first()
 
     return render_template('calendar_day.html',
                          date=day_date,
                          updates=updates,
+                         update_history=history_by_item,
+                         retrospective_items=retrospective_items,
                          key_date=key_date)
+
+@app.route('/item/<int:item_id>/history')
+@login_required
+def item_history(item_id):
+    """Show progress graph for an item over time."""
+    item = StudyItem.query.get_or_404(item_id)
+    
+    # Fetch all update history for this item, ordered by date
+    updates = UpdateHistory.query.filter_by(item_id=item_id).order_by(UpdateHistory.date.asc()).all()
+    
+    # Build data structure for chart
+    chart_data = {
+        'dates': [],
+        'progress': [],
+        'hours_spent': [],
+        'theory_confidence': [],
+        'practical_confidence': []
+    }
+    
+    # If no history, start with current item values
+    if not updates:
+        today = datetime.utcnow().date()
+        chart_data['dates'].append(today.isoformat())
+        chart_data['progress'].append(item.progress)
+        chart_data['hours_spent'].append(item.hours_spent)
+        chart_data['theory_confidence'].append(item.theory_confidence)
+        chart_data['practical_confidence'].append(item.practical_confidence)
+    else:
+        # Build series from update history
+        for update in updates:
+            chart_data['dates'].append(update.date.isoformat())
+            
+            # Use the delta 'new' values to show progression
+            if update.delta:
+                delta = update.delta
+                chart_data['progress'].append(delta.get('progress', {}).get('new', item.progress))
+                chart_data['hours_spent'].append(delta.get('hours_spent', {}).get('new', item.hours_spent))
+                chart_data['theory_confidence'].append(delta.get('theory_confidence', {}).get('new', item.theory_confidence))
+                chart_data['practical_confidence'].append(delta.get('practical_confidence', {}).get('new', item.practical_confidence))
+            else:
+                chart_data['progress'].append(item.progress)
+                chart_data['hours_spent'].append(item.hours_spent)
+                chart_data['theory_confidence'].append(item.theory_confidence)
+                chart_data['practical_confidence'].append(item.practical_confidence)
+    
+    return render_template('item_history.html', item=item, chart_data=chart_data)
 
 @app.route('/key_date/add', methods=['GET', 'POST'])
 @login_required

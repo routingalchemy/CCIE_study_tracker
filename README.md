@@ -22,10 +22,11 @@ Simple study tracker written in Flask. Specifically it was created for tracking 
    - Key dates (exam, bootcamp, etc..) can be added to it and it shows on the main page and the remain days.
    - Shows the updates on the different topics
 - Dark/light theme toggle
+- Stats on learning progress
 
 ## Install
 
-1. Clone or download the project. ```git clone https://github.com:routingalchemy/CCIE_study_tracker.git```
+1. Clone or download the project. ```git clone https://github.com/routingalchemy/CCIE_study_tracker```
 2. Choose between native or docker run.
    - Native: Install dependencies into a virtual environment:
    ```bash
@@ -71,7 +72,7 @@ The app will run on http://localhost:5000
  ```bash
  docker run -d --name tracker -p 5000:5000  ccie_tracker:latest  #minimal run
  docker run -d --name tracker -p 5000:5000 -e  ENABLE_PASSWORD_PROTECTION=False ccie_tracker:latest  #no password authenticaltion
-docker run -d --name tracker -p 5000:5000 -e APP_PASSWORD=iamcciegod ccie_tracker:latest #set awesome password
+ docker run -d --name tracker -p 5000:5000 -e APP_PASSWORD=iamcciegod ccie_tracker:latest #set awesome password
  ```
  - or using docker compose 
 ```bash
@@ -100,3 +101,5 @@ The bulk import feature allows you to upload Excel files (.xlsx or .xls) and map
 6. Multiple columns can be selected for Title and Notes - they will be concatenated
 7. **Rows with empty titles will be skipped automatically**
 8. The system handles missing data gracefully with sensible defaults
+
+

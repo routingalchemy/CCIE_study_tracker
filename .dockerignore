@@ -1,3 +1,4 @@
 *.md
 docker-compose.yml
 Dockerfile
+app_walk-through.mp4

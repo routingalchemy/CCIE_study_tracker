@@ -425,6 +425,7 @@
 .badge-modify { background: rgba(33, 150, 243, 0.2); color: #2196F3; }
 .badge-delete { background: rgba(244, 67, 54, 0.2); color: #F44336; }
 .badge-keydate { background: rgba(255, 152, 0, 0.2); color: #FF9800; }
+.badge-retrospective { background: rgba(156, 39, 176, 0.2); color: #9C27B0; }
 
 .event-time { font-size: 0.9rem; color: var(--text-secondary); }
 
@@ -498,6 +499,54 @@
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
+}
+
+/* Delta changes display */
+.delta-changes {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.delta-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.delta-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.delta-item {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    background: var(--header-bg);
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--primary-color);
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.delta-item strong {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.event-title-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.event-title-link:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
 }
 
 .block-actions { margin-bottom: 1rem; }

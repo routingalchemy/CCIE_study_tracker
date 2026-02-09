@@ -42,11 +42,14 @@
                             {% else %}
                                 <span class="badge badge-delete" title="Deleted">✕ Delete</span>
                             {% endif %}
+                            {% if update.id in retrospective_items %}
+                                <span class="badge badge-retrospective" title="Retrospectively Added">🕐 Retrospective</span>
+                            {% endif %}
                         </div>
                         <div class="event-time">{{ update.last_modified.strftime('%H:%M:%S') }}</div>
                     </div>
                     <div class="event-body">
-                        <h4>{{ update.title }}</h4>
+                        <h4><a href="{{ url_for('item_history', item_id=update.id) }}" class="event-title-link">{{ update.title }}</a></h4>
                         {% if update.notes %}
                             <p class="event-notes">{{ update.notes }}</p>
                         {% endif %}
@@ -56,6 +59,29 @@
                             <span>Theory: <strong>{{ update.theory_confidence }}/5</strong></span>
                             <span>Practical: <strong>{{ update.practical_confidence }}/5</strong></span>
                         </div>
+                        {% if update.id in update_history %}
+                            {% set history = update_history[update.id] %}
+                            {% set delta = history.delta %}
+                            {% if delta %}
+                                <div class="delta-changes">
+                                    <div class="delta-label">Changes:</div>
+                                    <div class="delta-items">
+                                        {% if 'hours_spent' in delta %}
+                                            <div class="delta-item">Hours: {{ delta['hours_spent']['old'] }} → <strong>{{ delta['hours_spent']['new'] }}</strong> (+{{ delta['hours_spent']['new'] - delta['hours_spent']['old'] }})</div>
+                                        {% endif %}
+                                        {% if 'progress' in delta %}
+                                            <div class="delta-item">Progress: {{ delta['progress']['old'] }}% → <strong>{{ delta['progress']['new'] }}%</strong> ({% if delta['progress']['new'] >= delta['progress']['old'] %}+{% endif %}{{ delta['progress']['new'] - delta['progress']['old'] }})</div>
+                                        {% endif %}
+                                        {% if 'theory_confidence' in delta %}
+                                            <div class="delta-item">Theory: {{ delta['theory_confidence']['old'] }}/5 → <strong>{{ delta['theory_confidence']['new'] }}/5</strong> ({% if delta['theory_confidence']['new'] >= delta['theory_confidence']['old'] %}+{% endif %}{{ delta['theory_confidence']['new'] - delta['theory_confidence']['old'] }})</div>
+                                        {% endif %}
+                                        {% if 'practical_confidence' in delta %}
+                                            <div class="delta-item">Practical: {{ delta['practical_confidence']['old'] }}/5 → <strong>{{ delta['practical_confidence']['new'] }}/5</strong> ({% if delta['practical_confidence']['new'] >= delta['practical_confidence']['old'] %}+{% endif %}{{ delta['practical_confidence']['new'] - delta['practical_confidence']['old'] }})</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}
