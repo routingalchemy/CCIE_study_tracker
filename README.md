@@ -24,6 +24,10 @@ Simple study tracker written in Flask. Specifically it was created for tracking 
 - Dark/light theme toggle
 - Stats on learning progress
 
+https://github.com/user-attachments/assets/c5ab42fe-9c7f-41aa-8eeb-075074183a59
+
+
+
 ## Install
 
 1. Clone or download the project. ```git clone https://github.com/routingalchemy/CCIE_study_tracker```
